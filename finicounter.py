@@ -21,11 +21,11 @@ cors_headers = {
 
 app = Sanic(__name__)
     
-@app.after_server_start
+@app.listener("after_server_start")
 async def init(app):
     app.ctx.redis = redis.from_url(REDIS_URL)
 
-@app.before_server_stop
+@app.listener("before_server_stop")
 async def cleanup(app):
     if hasattr(app.ctx, 'redis'):
         await app.ctx.redis.close()
