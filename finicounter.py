@@ -19,10 +19,22 @@ cors_headers = {
     "Access-Control-Allow-Headers": "Content-Type"
 }
 
-app = Sanic("finicounter")
+app = Sanic(__name__)
 
-app_redis = redis.from_url(REDIS_URL)
+async def setup_redis(app):
+    app.redis = redis.from_url(REDIS_URL)
+    
+async def close_redis(app):
+    if hasattr(app, 'redis'):
+        await app.redis.close()
+        
+@app.listener('before_server_start')
+async def init(app, loop):
+    await setup_redis(app)
 
+@app.listener('after_server_stop')
+async def cleanup(app, loop):
+    await close_redis(app)
 
 @app.route("/api/pageViews", methods=["OPTIONS"])
 async def options_handler(request):
@@ -34,7 +46,7 @@ async def get_page_views(request):
         path = request.args.get("path")
         if not path:
             return response.json({"error": "Path parameter is required"}, status=404, headers=cors_headers)
-        views = await app_redis.get(path)
+        views = await app.redis.get(path)
         views = int(views) if views else 0
         logger.info(f"Path: {path}, Views: {views}")
         return response.json({"count": views}, headers=cors_headers)
@@ -49,7 +61,7 @@ async def update_page_views(request):
         path = data.get("path")
         if not path:
             return response.json({"error": "Path parameter is required"}, status=400, headers=cors_headers)
-        views = await app_redis.incr(path)
+        views = await app.redis.incr(path)
         await app.redis.hset(path, "updateTime", datetime.datetime.now(datetime.timezone.utc).isoformat())
         logger.info(f"Path: {path}, Views: {views}")
         return response.empty(status=204, headers=cors_headers)
