@@ -1,3 +1,2 @@
 sanic==19.6.0
 pymongo==4.2.0
-validators==0.20.0
