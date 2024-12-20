@@ -73,6 +73,4 @@ async def update_page_views(request):
         logger.error(f"Error while handling PUT request: {e}")
         return response.json({"error": "Internal Server Error"}, status=500, headers=cors_headers)
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, fast=True)
 
