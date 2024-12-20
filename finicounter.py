@@ -37,6 +37,7 @@ async def get_page_views(request):
     if not path:
         return response.json({"error": "Path parameter is required"}, status=404, headers=cors_headers)
     result = collection.find_one({"path": path})
+    logger.info(f"Path: {path}, Result: {result}")
     views = result["views"] if result else 0
     return response.json({"count": views}, headers=cors_headers)
 
@@ -47,12 +48,13 @@ async def update_page_views(request):
     if not path:
         return response.json({"error": "Path parameter is required"}, status=400, headers=cors_headers)
     logger.info(f"Path: {path}")
-    collection.find_one_and_update(
+    result = collection.find_one_and_update(
         {"path": path},
         {"$inc": {"views": 1}, "$set": {"updateTime": datetime.datetime.now(datetime.timezone.utc)}},
         upsert=True,
         return_document=pymongo.ReturnDocument.AFTER,
         maxTimeMS=50
     )
+    logger.info(f"Path: {path}, Result: {result}")
     return response.empty(status=204, headers=cors_headers)
 
