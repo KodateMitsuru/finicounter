@@ -25,12 +25,12 @@ async def close_redis(app):
     if hasattr(app, 'redis'):
         await app.ctx.redis.close()
         
-@app.listener('before_server_start')
-async def init(app, loop):
+@app.main_process_start
+async def init(app):
     app.ctx.redis = redis.from_url(REDIS_URL)
 
-@app.listener('after_server_stop')
-async def cleanup(app, loop):
+@app.main_process_stop
+async def cleanup(app):
     if hasattr(app.ctx, 'redis'):
         await app.ctx.redis.close()
 
