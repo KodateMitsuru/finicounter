@@ -25,11 +25,11 @@ async def close_redis(app):
     if hasattr(app, 'redis'):
         await app.ctx.redis.close()
         
-@app.main_process_start
+@app.after_server_start
 async def init(app):
     app.ctx.redis = redis.from_url(REDIS_URL)
 
-@app.main_process_stop
+@app.before_server_stop
 async def cleanup(app):
     if hasattr(app.ctx, 'redis'):
         await app.ctx.redis.close()
@@ -72,5 +72,6 @@ async def update_page_views(request):
     except Exception as e:
         logger.error(f"Error while handling PUT request: {e}")
         return response.json({"error": "Internal Server Error"}, status=500, headers=cors_headers)
+    
 
 
