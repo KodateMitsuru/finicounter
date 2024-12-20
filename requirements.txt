@@ -1,2 +1,2 @@
-sanic==21.3.4
+sanic==20.12.7
 redis

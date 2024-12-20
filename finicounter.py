@@ -21,10 +21,6 @@ cors_headers = {
 
 app = Sanic(__name__)
     
-async def close_redis(app):
-    if hasattr(app, 'redis'):
-        await app.ctx.redis.close()
-        
 @app.after_server_start
 async def init(app):
     app.ctx.redis = redis.from_url(REDIS_URL)
