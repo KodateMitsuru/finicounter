@@ -20,21 +20,19 @@ cors_headers = {
 }
 
 app = Sanic(__name__)
-
-async def setup_redis(app):
-    app.redis = redis.from_url(REDIS_URL)
     
 async def close_redis(app):
     if hasattr(app, 'redis'):
-        await app.redis.close()
+        await app.ctx.redis.close()
         
 @app.listener('before_server_start')
 async def init(app, loop):
-    await setup_redis(app)
+    app.ctx.redis = redis.from_url(REDIS_URL)
 
 @app.listener('after_server_stop')
 async def cleanup(app, loop):
-    await close_redis(app)
+    if hasattr(app.ctx, 'redis'):
+        await app.ctx.redis.close()
 
 @app.route("/api/pageViews", methods=["OPTIONS"])
 async def options_handler(request):
@@ -46,7 +44,7 @@ async def get_page_views(request):
         path = request.args.get("path")
         if not path:
             return response.json({"error": "Path parameter is required"}, status=404, headers=cors_headers)
-        views = await app.redis.get(path)
+        views = await app.ctx.redis.get(path)
         views = int(views) if views else 0
         logger.info(f"Path: {path}, Views: {views}")
         return response.json({"count": views}, headers=cors_headers)
@@ -61,8 +59,14 @@ async def update_page_views(request):
         path = data.get("path")
         if not path:
             return response.json({"error": "Path parameter is required"}, status=400, headers=cors_headers)
-        views = await app.redis.incr(path)
-        await app.redis.hset(path, "updateTime", datetime.datetime.now(datetime.timezone.utc).isoformat())
+        
+        # 检查键的类型并初始化
+        key_type = await app.ctx.redis.type(path)
+        if key_type == b'none':
+            await app.ctx.redis.set(path, 0)
+        
+        views = await app.ctx.redis.incr(path)
+        await app.ctx.redis.hset(path, "updateTime", datetime.datetime.now(datetime.timezone.utc).isoformat())
         logger.info(f"Path: {path}, Views: {views}")
         return response.empty(status=204, headers=cors_headers)
     except Exception as e:
