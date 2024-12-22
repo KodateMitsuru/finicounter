@@ -34,6 +34,16 @@ app.get("/api/pageViews", cors(corsOptions), async (req, res) => {
   }
 });
 
+app.get("/api/siteViews", cors(corsOptions), async (req, res) => {
+  try {
+    const views = await redis.get("site");
+    views = parseInt(views) || 0;
+    res.json({ count: views });
+  } catch (e) {
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 app.put("/api/pageViews", cors(corsOptions), async (req, res) => {
   try {
     const path = req.body.path;
@@ -42,14 +52,16 @@ app.put("/api/pageViews", cors(corsOptions), async (req, res) => {
       return res.status(400).json({ error: "Invalid path format" });
     }
 
-    const keyType = await redis.type(path);
-    if (keyType !== "string" && keyType !== "none") {
-      return res.status(400).json({ error: "Key type mismatch" });
-    }
-    if (keyType === "none") {
-      await redis.set(path, 0);
-    }
     await redis.incr(path);
+    res.status(204).send();
+  } catch (e) {
+    res.status(500).json({ error: `${e}` });
+  }
+});
+
+app.put("/api/siteViews", cors(corsOptions), async (req, res) => {
+  try {
+    await redis.incr("site");
     res.status(204).send();
   } catch (e) {
     res.status(500).json({ error: `${e}` });
