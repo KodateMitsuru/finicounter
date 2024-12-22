@@ -7,16 +7,8 @@ app.use(express.json());
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 const redis = new Redis(REDIS_URL);
 
-const allowedOrigins = [process.env.ALLOWED_ORIGIN || "*"];
-
 const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
+  origin: "*",
   methods: "*",
   allowedHeaders: "Content-Type"
 };
