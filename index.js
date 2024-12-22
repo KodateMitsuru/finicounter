@@ -36,7 +36,7 @@ app.get("/api/pageViews", cors(corsOptions), async (req, res) => {
 
 app.get("/api/siteViews", cors(corsOptions), async (req, res) => {
   try {
-    const views = await redis.get("site");
+    let views = await redis.get("site");
     views = parseInt(views) || 0;
     res.json({ count: views });
   } catch (e) {
