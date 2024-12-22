@@ -34,15 +34,25 @@ app.put("/api/pageViews", async (req, res) => {
     if (!path) return res.set(corsHeaders).status(400).json({ error: "Path parameter is required" });
 
     const keyType = await redis.type(path);
+    if (keyType !== "string" && keyType !== "none") {
+      return res.set(corsHeaders).status(400).json({ error: "Key type mismatch" });
+    }
     if (keyType === "none") {
       await redis.set(path, 0);
     }
-    const views = await redis.incr(path);
-    await redis.hset(path, "updateTime", new Date().toISOString());
+    await redis.incr(path);
     res.set(corsHeaders).status(204).send();
   } catch (e) {
-    res.set(corsHeaders).status(500).json({ error: "Internal Server Error" });
+    res.set(corsHeaders).status(500).json({ error: `${e}` });
   }
+});
+
+// 错误处理中间件
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ error: "Invalid JSON" });
+  }
+  next();
 });
 
 app.listen(8000, () => console.log("Server running on port 8000"));
