@@ -7,7 +7,7 @@ const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 const redis = new Redis(REDIS_URL);
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": `${process.env.CORS_ORIGIN || "*"}`,
   "Access-Control-Allow-Methods": "*",
   "Access-Control-Allow-Headers": "Content-Type",
 };
