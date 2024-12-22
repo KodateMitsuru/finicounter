@@ -1,49 +1,66 @@
 const express = require("express");
 const Redis = require("ioredis");
+const cors = require("cors");
 const app = express();
 app.use(express.json());
 
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 const redis = new Redis(REDIS_URL);
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": `${process.env.CORS_ORIGIN || "*"}`,
-  "Access-Control-Allow-Methods": "*",
-  "Access-Control-Allow-Headers": "Content-Type",
+const allowedOrigins = [process.env.ALLOWED_ORIGIN || "*"];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  methods: "*",
+  allowedHeaders: "Content-Type"
 };
 
-app.options("/api/pageViews", (req, res) => {
-  res.set(corsHeaders).json({});
+app.use(cors(corsOptions));
+
+app.options("/api/pageViews", cors(corsOptions), (req, res) => {
+  res.json({});
 });
 
-app.get("/api/pageViews", async (req, res) => {
+app.get("/api/pageViews", cors(corsOptions), async (req, res) => {
   try {
     const path = req.query.path;
-    if (!path) return res.set(corsHeaders).status(404).json({ error: "Path parameter is required" });
+    const pathRegex = /^\/posts\/\d{4}\/\d{2}\/\d{2}\/.+\/$/;
+    if (!path || !pathRegex.test(path)) {
+      return res.status(404).json({ error: "Invalid path format" });
+    }
     let views = await redis.get(path);
     views = parseInt(views) || 0;
-    res.set(corsHeaders).json({ count: views });
+    res.json({ count: views });
   } catch (e) {
-    res.set(corsHeaders).status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-app.put("/api/pageViews", async (req, res) => {
+app.put("/api/pageViews", cors(corsOptions), async (req, res) => {
   try {
     const path = req.body.path;
-    if (!path) return res.set(corsHeaders).status(400).json({ error: "Path parameter is required" });
+    const pathRegex = /^\/posts\/\d{4}\/\d{2}\/\d{2}\/.+\/$/;
+    if (!path || !pathRegex.test(path)) {
+      return res.status(400).json({ error: "Invalid path format" });
+    }
 
     const keyType = await redis.type(path);
     if (keyType !== "string" && keyType !== "none") {
-      return res.set(corsHeaders).status(400).json({ error: "Key type mismatch" });
+      return res.status(400).json({ error: "Key type mismatch" });
     }
     if (keyType === "none") {
       await redis.set(path, 0);
     }
     await redis.incr(path);
-    res.set(corsHeaders).status(204).send();
+    res.status(204).send();
   } catch (e) {
-    res.set(corsHeaders).status(500).json({ error: `${e}` });
+    res.status(500).json({ error: `${e}` });
   }
 });
 
